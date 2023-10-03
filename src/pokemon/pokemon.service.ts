@@ -1,17 +1,29 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { CreatePokemonDto } from './dto/create-pokemon.dto';
-import { UpdatePokemonDto } from './dto/update-pokemon.dto';
+import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose/dist/common';
+
 import { Model, isValidObjectId } from 'mongoose';
 import { Pokemon } from './entities/pokemon.entity';
-import { InjectModel } from '@nestjs/mongoose/dist/common';
+
+import { UpdatePokemonDto } from './dto/update-pokemon.dto';
+import { CreatePokemonDto } from './dto/create-pokemon.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class PokemonService {
+
+  private defaultLimit: number;
   
   constructor(
     @InjectModel (Pokemon.name)
     private readonly pokemonModel: Model<Pokemon>,
-    ) {}
+
+    private readonly configService: ConfigService,
+    ) {
+      
+      this.defaultLimit = configService.get<number> ('defaultLimit');
+      
+    }
 
   async create(createPokemonDto: CreatePokemonDto) {
     createPokemonDto.name = createPokemonDto.name.toLowerCase();
@@ -24,8 +36,17 @@ export class PokemonService {
     }
   }
 
-  findAll() {
-    return `This action returns all pokemon`;
+  findAll( paginationDto: PaginationDto) {
+
+    const { limit = this.defaultLimit, offset = 0 } = paginationDto;
+
+    return this.pokemonModel.find()
+    .limit( limit )
+    .skip( offset )
+    .sort({
+      no: 1
+    })
+    .select('-__v');
   }
 
   async findOne(term: string) { //term: termino mal nombre para sustituir el id pero el lo hizo asi en el curso
